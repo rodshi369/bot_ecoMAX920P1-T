@@ -1,0 +1,87 @@
+# -*- coding: utf-8 -*-
+
+# TOKEN = '6180170549:AAE9Apt_GCdc4BloPqeH23nNHJQxDLqredw' #Бот Павла pr-12dc-da-r-n
+# TOKEN = '6216681727:AAGYzudl9djd15UG8T4Q-OFKRmBc2O-5hJk'  # Бот t.me/Aktepe_bot svara
+TOKEN = '5964513260:AAGfL799eqdDgC4Br-1NaxWAK2S4ldt1jD8' #Бот t.me/PR18DC_BOT Polimer
+
+IP = '91.240.218.87'
+PORT = 8008
+stopping_survey = True
+
+OPERATING_MODE = {0: "Выключено", 9: "Ручной режим"}
+
+SUMMER_MODE = {0: "Зима", 1: "Лето", 2: "Авто"}
+
+WATER_HEATER_WORK_MODE = {0: "Выключено", 1: "Работа с приоритетом", 2: "Работа без приоритета"}
+
+WORK_MODE = {0: "Выключено", 1: "Выключено ЦО", 2: "Включён тёплый пол", 3: "Только насос"}
+
+CONTROLLED_PARAMETERS = ("min_heating_target_temp.set",
+                         "max_heating_target_temp.set",
+                         "heating_pump_on_temp",
+                         "pause_heating_for_water_heater",
+                         "increase_heating_temp_for_water_heater",
+                         "lambda_work",
+                         "boiler_alert_temp",
+                         "max_feeder_temp",
+                         "external_boiler_temp",
+                         "external_boiler_temp",
+                         "work_term",
+                         "pause_term",
+                         "feeder_kindle",
+                         "kindle_finish_fumes_temp",
+                         "kindle_fumes_delta_temp",
+                         "airflow_power_kindle",
+                         "kindle_time",
+                         "scavenge_after_kindle",
+                         "cycle_time",
+                         "fuel_detection_time",
+                         "min_fan_power",
+                         "min_extinguish_time",
+                         "airflow_power_extinguish",
+                         "supervision_work_airflow",
+                         "feed_time_supervision",
+                         "feed_supervision_break",
+                         "airflow_power_supervision",
+                         "increase_fan_support_mode",
+                         "supervision_work_airflow",
+                         "supervision_work_airflow_brake",
+                         "fuel_detection_time_grate",
+                         "lambda_work",
+                         "lambda_correction_range",
+                         "min_water_heater_target_temp",
+                         "max_water_heater_target_temp",
+                         "water_heater_feeding_extension",
+                         "circulation_pause_time",
+                         "circulation_work_time",
+                         "circulation_start_temp",
+                         # "min_target_temp",
+                         # "max_target_temp",
+                         # "weather_control",
+                         # "insensitivity",
+                         # "off_therm_pump",
+                         "heating_target_temp",
+                         "heating_temp_grate",
+                         "heating_weather_control",
+                         "heating_heat_curve",
+                         "heating_heat_curve_shift",
+                         "weather_factor",
+                         "fuzzy_logic",
+                         "airflow_power_100",
+                         "airflow_power_50",
+                         "airflow_power_30",
+                         "heating_hysteresis",
+                         "boiler_hysteresis_grate",
+                         "max_fuzzy_logic_power",
+                         "min_fuzzy_logic_power",
+                         "water_heater_target_temp",
+                         "water_heater_work_mode",
+                         "water_heater_hysteresis",
+                         "water_heater_disinfection",
+                         "mixer_target_temp",
+                         # "low_target_temp",
+                         "weather_control",
+                         "heat_curve",
+                         # "parallel_offset_heat_curve",
+                         "summer_mode",
+                         "summer_mode_off_temp")
