@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# TOKEN = '6180170549:AAE9Apt_GCdc4BloPqeH23nNHJQxDLqredw' #Бот Павла pr-12dc-da-r-n
-# TOKEN = '6216681727:AAGYzudl9djd15UG8T4Q-OFKRmBc2O-5hJk'  # Бот t.me/Aktepe_bot svara
-TOKEN = '5964513260:AAGfL799eqdDgC4Br-1NaxWAK2S4ldt1jD8' #Бот t.me/PR18DC_BOT Polimer
+TOKEN = ''
 
-IP = '91.240.218.87'
+IP = ''
 PORT = 8008
 stopping_survey = True
 
