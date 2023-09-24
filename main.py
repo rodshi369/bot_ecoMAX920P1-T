@@ -12,38 +12,24 @@ from telebot import types
 import threading
 import queue
 import const
+import set
 
 
 import reader_plum
 
-# bot = telebot.TeleBot('5964513260:AAGfL799eqdDgC4Br-1NaxWAK2S4ldt1jD8')
-bot = telebot.TeleBot(const.TOKEN)
+bot = telebot.TeleBot(set.TOKEN)
 ########### Инициализируем базы данных
 db.init_db()
 db.init_db_passing()
-
 
 ######################################
 
 def signal_handler():
     pass
 
-
 _ON = True
 q = queue.Queue()
 ON_OFF = True
-
-
-# def opros(b):
-#     # qe = queue.Queue()
-#
-#     t1 = threading.Thread(target=reader_plum.main, args=[bot, b, q])
-#     t1.start()
-
-
-# process_one = Process(target=reader_plum.main, args=(q,))
-# process_one.start()
-# process_one.join()
 
 def main(bot, id, q):
     markup = types.InlineKeyboardMarkup()
@@ -61,13 +47,13 @@ def main(bot, id, q):
         txtstate = str(data_["state"])
         #"ВЫКЛ" if str(data_["state"]) == "DeviceState.OFF" else "ВКЛ"
         textdata = "Режим работы:  "+txtstate+\
-                   "\nТемп. котла:             "+str(round(data_["heating_temp"],2))+";  Уст: "+str(data_["heating_target"])+\
-                   "\nТемп. подачи топлива: "+str(round(data_["feeder_temp"],2))+\
-                   "\nТемп. ГВС:                        "+str(round(data_["water_heater_temp"],2))+\
-                   "\nТемп. с наружи:              "+str(round(data_["outside_temp"],2))+\
-                   "\nТемп. возврата:              "+str(round(data_["return_temp"],2))+\
-                   "\nТемп.прод-ов сгорания:   "+str(round(data_["exhaust_temp"],2))+\
-                   "\nТемп. смесителя:      "+str(round(data_['mixers'][0].data['current_temp'],2))+"; Уст: "+str(data_['mixers'][0].data['target_temp'])+\
+                   "\nТемп. котла:             "+str(round(data_["heating_temp"], 2))+";  Уст: "+str(data_["heating_target"])+\
+                   "\nТемп. подачи топлива: "+str(round(data_["feeder_temp"], 2)) +\
+                   "\nТемп. ГВС:                        "+str(round(data_["water_heater_temp"], 2))+\
+                   "\nТемп. с наружи:              "+str(round(data_["outside_temp"], 2)) +\
+                   "\nТемп. возврата:              "+str(round(data_["return_temp"], 2)) +\
+                   "\nТемп.прод-ов сгорания:   "+str(round(data_["exhaust_temp"], 2)) +\
+                   "\nТемп. смесителя:      "+str(round(data_['mixers'][0].data['current_temp'], 2))+"; Уст: "+str(data_['mixers'][0].data['target_temp']) +\
                    "\nМощность вентилятора:        "+str(data_["fan_power"])
         try:
             bot.edit_message_text(chat_id=id, message_id=to_pin, text=textdata, reply_markup=markup)
@@ -154,7 +140,6 @@ def query_handler(call):
 def writer(message, id):
     rez = asyncio.run(reader_plum.writer(message, id))
     pass
-
 
 class User:
     def __init__(self, id):
@@ -342,7 +327,7 @@ def mainmenu(message):
     btn4 = types.KeyboardButton('Управление')
     markup.add(btn1, btn3, btn4)
 
-    bot.send_message(message.from_user.id, "Чиво хатим?", reply_markup=markup)
+    bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup)
 
 
 def ControlPanel(message):
@@ -352,7 +337,7 @@ def ControlPanel(message):
     btn3 = types.KeyboardButton("ВКЛ/ВЫКЛ")
     btn4 = types.KeyboardButton('Главное меню')
     markup.add(btn1, btn2, btn3, btn4)
-    bot.send_message(message.from_user.id, "Чиво хатим?", reply_markup=markup)
+    bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup)
 
 def boiler(massage):
 

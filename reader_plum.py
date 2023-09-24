@@ -16,12 +16,13 @@ from pyplumio.helpers.typing import EventDataType
 from pyplumio.devices import mixer
 
 import db, const
+import set
 
 FILENAME: Final = "ecomax_data.json"
 REDACTED: Final = "**REDACTED**"
 TIMEOUT: Final = 20
-DEVICE = "com3"
-BAUDRATE = 115200
+DEVICE = set.DEVICE
+BAUDRATE = set.BAUDRATE
 
 # class DevState(DeviceState):
 #
@@ -127,7 +128,7 @@ async def writer(message, id):
                     await Mixer.set(id[0], int(message.text))
             elif id[1] == 'QDoubleSpinBox':
                 items_for_change = await ecomax.get(id[0])
-                await Mixer.set(id[0], float(message.text.replace(',','.')))
+                await Mixer.set(id[0], float(message.text.replace(',', '.')))
             elif id[1] == 'QComboBox':
                 # items_for_change = await ecomax.get(id[0])
                 pass
