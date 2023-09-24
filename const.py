@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 
-TOKEN = ''
-
-IP = ''
-PORT = 8008
 stopping_survey = True
 
 OPERATING_MODE = {0: "Выключено", 9: "Ручной режим"}
