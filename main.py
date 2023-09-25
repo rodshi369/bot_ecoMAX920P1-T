@@ -13,7 +13,7 @@ import threading
 import queue
 import const
 import set
-
+from telebot import apihelper
 
 import reader_plum
 
@@ -262,6 +262,19 @@ def registration(message):
         bot.reply_to(message, 'Опаньки(oooops)')
 
 
+# @bot.message_handler(func=lambda message: True)
+# def handle_message(message):
+#     try:
+#         # Ваш код обработки сообщения
+#         pass
+#     except apihelper.ApiException as e:
+#         if e.error_code == 403:
+#             # Пользователь заблокировал бота
+#             bot.send_message(message.chat.id, 'Вы заблокировали бота')
+#         else:
+#             # Другие ошибки
+#             bot.send_message(message.chat.id, 'Произошла ошибка: {}'.format(e))
+
 def process_code_step(message, user):
     try:
         chat_id = message.from_user.id
@@ -372,7 +385,10 @@ def contour(massage):
     # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
     # bot.send_message(id, text="Управление", reply_markup=markup)
-    bot.edit_message_text(chat_id=id, message_id=to_pin, text='Управление отоплением', reply_markup=markup)
+    bot.edit_message_text(chat_id=id, message_id=to_pin, text='Управление отоплением:' +
+                                                              "\nТемп. смесителя:     "+str(round(data_['mixers'][0].data['current_temp'], 2))+"; Уст: "+str(data_['mixers'][0].data['target_temp']) +
+                                                              "\nТемп. возврата:      " + str(round(data_['return_temp'], 2))
+                          , reply_markup=markup)
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):

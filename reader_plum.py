@@ -119,15 +119,15 @@ async def writer(message, id):
         if id[2] == 'mixer':
             mixers = await ecomax.get("mixers")
             Mixer: mixer = mixers[0]
-            items_for_change = await Mixer.get(id[0])
+            # items_for_change = await Mixer.get(id[0])
             if id[1] == 'QSpinBox':
-                items_for_change = await ecomax.get(id[0])
+                items_for_change = await Mixer.get(id[0])
                 if id[0] == 'parallel_offset_heat_curve':
                     await Mixer.set(id[0], int(message.text)+20)
                 else:
                     await Mixer.set(id[0], int(message.text))
             elif id[1] == 'QDoubleSpinBox':
-                items_for_change = await ecomax.get(id[0])
+                items_for_change = await Mixer.get(id[0])
                 await Mixer.set(id[0], float(message.text.replace(',', '.')))
             elif id[1] == 'QComboBox':
                 # items_for_change = await ecomax.get(id[0])
