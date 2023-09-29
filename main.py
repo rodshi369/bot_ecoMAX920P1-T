@@ -16,6 +16,10 @@ import set
 from telebot import apihelper
 
 import reader_plum
+import logging
+# Настройка логирования в файл
+# logging.basicConfig(filename='bot.log', level=logging.ERROR)
+logging.basicConfig(filename='bot.log')
 
 bot = telebot.TeleBot(set.TOKEN)
 ########### Инициализируем базы данных
@@ -23,7 +27,6 @@ db.init_db()
 db.init_db_passing()
 
 ######################################
-
 def signal_handler():
     pass
 
@@ -46,7 +49,8 @@ def main(bot, id, q):
         data_ = q.get()
         txtstate = str(data_["state"])
         #"ВЫКЛ" if str(data_["state"]) == "DeviceState.OFF" else "ВКЛ"
-        textdata = "Режим работы:  "+txtstate+\
+        textdata = "*Опрос системы:*"+\
+                   "\nРежим работы:  "+txtstate+\
                    "\nТемп. котла:             "+str(round(data_["heating_temp"], 2))+";  Уст: "+str(data_["heating_target"])+\
                    "\nТемп. подачи топлива: "+str(round(data_["feeder_temp"], 2)) +\
                    "\nТемп. ГВС:                        "+str(round(data_["water_heater_temp"], 2))+\
@@ -56,12 +60,10 @@ def main(bot, id, q):
                    "\nТемп. смесителя:      "+str(round(data_['mixers'][0].data['current_temp'], 2))+"; Уст: "+str(data_['mixers'][0].data['target_temp']) +\
                    "\nМощность вентилятора:        "+str(data_["fan_power"])
         try:
-            bot.edit_message_text(chat_id=id, message_id=to_pin, text=textdata, reply_markup=markup)
-            # Выведем в телеграмм канал
-            # bot.edit_message_text(chat_id=CHANNEL_NAME, message_id=channel_message, text=textdata)
-            # setpoints(CHANNEL_NAME)
-        except:
-            pass
+            bot.edit_message_text(chat_id=id, message_id=to_pin, text=textdata, reply_markup=markup, parse_mode="Markdown")
+        except Exception as err:
+            logging.error("Произошла ошибка при обработке сообщения: %s", err)
+
         time.sleep(20)
     delete = bot.delete_message(chat_id=id, message_id=to_pin)
     # delete = bot.delete_message(chat_id=CHANNEL_NAME, message_id=channel_message)
@@ -136,6 +138,7 @@ def query_handler(call):
         pass
     bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=answer,
                           reply_markup=None)
+
 
 def writer(message, id):
     rez = asyncio.run(reader_plum.writer(message, id))
@@ -337,11 +340,16 @@ def mainmenu(message):
     btn1 = types.KeyboardButton("Опрос состояния объекта")
     # btn2 = types.KeyboardButton("Вкл")
     btn3 = types.KeyboardButton("Отключить опрос")
-    btn4 = types.KeyboardButton('Управление')
-    markup.add(btn1, btn3, btn4)
+    btn4 = types.KeyboardButton("Котел")
+    btn5 = types.KeyboardButton("Контуры")
+    btn6 = types.KeyboardButton("ВКЛ/ВЫКЛ")
 
-    bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup)
+    # btn4 = types.KeyboardButton('Управление')
+    markup.add(btn1, btn3, btn4, btn5, btn6)
 
+    id_mess = bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup).message_id
+    # delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+    # bot.send_message(message.from_user.id, reply_markup=markup)
 
 def ControlPanel(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
@@ -357,20 +365,23 @@ def boiler(massage):
     id = massage.from_user.id
 
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
-
+    # bot.send_chat_action(chat_id=id, action=telebot.con.constants.ChatAction.TYPING)
     asyncio.run(reader_plum.run(q))
     data_ = q.get()
     # data_ = globals()['q'].get()
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(text='Погодное управление: '+str(data_['heating_weather_control'].value), callback_data="Погодное управление"))
+    markup.add(types.InlineKeyboardButton(text='Погодное управление: '+"Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" +str(data_['heating_weather_control'].value), callback_data="Погодное управление"))
     markup.add(types.InlineKeyboardButton(text='Кривая нагрева: '+str(data_['heating_heat_curve'].value), callback_data="Кривая нагрева"))
     markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг: ' + str(data_['heating_heat_curve_shift'].value), callback_data="Параллельный сдвиг"))
     # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
     # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
     # bot.send_message(id, text="Управление", reply_markup=markup)
+    text = "*Управление котлом:*" +\
+            "\nТемп. котла:             " + str(round(data_["heating_temp"], 2)) + ";  Уст: " + str(data_["heating_target"])
 
-    bot.edit_message_text(chat_id=id, message_id=to_pin, text='Управление котлом', reply_markup=markup)
+    bot.edit_message_text(chat_id=id, message_id=to_pin, text=text, reply_markup=markup, parse_mode="Markdown")
+
 def contour(massage):
     id = massage.from_user.id
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
@@ -379,16 +390,19 @@ def contour(massage):
     data_ = q.get()
     # data_ = globals()['q'].get()
     markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton(
+        text='Погодное управление: ' + "Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" + str(
+            data_['heating_weather_control'].value), callback_data="Погодное управление"))
     markup.add(types.InlineKeyboardButton(text='Кривая нагрева контура: '+str(data_['mixers'][0].data['heat_curve'].value), callback_data="Кривая нагрева контура"))
     markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг контура: ' + str(data_['mixers'][0].data['parallel_offset_heat_curve'].value-20), callback_data="Параллельный сдвиг контура"))
     # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
     # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
     # bot.send_message(id, text="Управление", reply_markup=markup)
-    bot.edit_message_text(chat_id=id, message_id=to_pin, text='Управление отоплением:' +
+    bot.edit_message_text(chat_id=id, message_id=to_pin, text='*Управление отоплением:*' +
                                                               "\nТемп. смесителя:     "+str(round(data_['mixers'][0].data['current_temp'], 2))+"; Уст: "+str(data_['mixers'][0].data['target_temp']) +
                                                               "\nТемп. возврата:      " + str(round(data_['return_temp'], 2))
-                          , reply_markup=markup)
+                          , reply_markup=markup, parse_mode="Markdown")
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
@@ -413,6 +427,8 @@ def get_text_messages(message):
 
     if message.text == 'Главное меню':
         mainmenu(message)
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+
     elif message.text == 'Опрос состояния объекта':
         # qe = queue.Queue()
         # t1 = threading.Thread(target=reader_plum.run(), args=[qe])
@@ -422,23 +438,33 @@ def get_text_messages(message):
         t1 = threading.Thread(target=main, args=[bot, id, q])
         t1.start()
         # opros(id)
-
-    elif message.text == 'Вкл':
-        pass
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+    # elif message.text == 'Вкл':
+    #     pass
     elif message.text == 'Отключить опрос':
         globals()["ON_OFF"] = False
-        pass
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+
     elif message.text == "Управление":
         ControlPanel(message)
         # setpoints(message.from_user.id)
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+
     elif message.text == "Главное меню":
         mainmenu(message)
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+
     elif message.text == "ВКЛ/ВЫКЛ":
         setpoints(message.from_user.id)
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+
     elif message.text == "Котел":
         boiler(message)
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+
     elif message.text == "Контуры":
         contour(message)
+        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
 
 # bot.polling(none_stop=True, interval=0)  # обязательная для работы бота часть
 bot.infinity_polling(timeout=10, long_polling_timeout=5)
