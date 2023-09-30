@@ -339,13 +339,13 @@ def mainmenu(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
     btn1 = types.KeyboardButton("Опрос состояния объекта")
     # btn2 = types.KeyboardButton("Вкл")
-    btn3 = types.KeyboardButton("Отключить опрос")
+    # btn3 = types.KeyboardButton("Отключить опрос")
     btn4 = types.KeyboardButton("Котел")
     btn5 = types.KeyboardButton("Контуры")
     btn6 = types.KeyboardButton("ВКЛ/ВЫКЛ")
 
     # btn4 = types.KeyboardButton('Управление')
-    markup.add(btn1, btn3, btn4, btn5, btn6)
+    markup.add(btn1, btn4, btn5, btn6)
 
     id_mess = bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup).message_id
     # delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
