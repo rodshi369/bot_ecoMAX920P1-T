@@ -336,13 +336,13 @@ def checkregistrationаvtorizacion(message):
 
 
 def mainmenu(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
-    btn1 = types.KeyboardButton("Опрос состояния объекта")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=4)
+    btn1 = types.KeyboardButton("Опрос состояния")
     # btn2 = types.KeyboardButton("Вкл")
     # btn3 = types.KeyboardButton("Отключить опрос")
     btn4 = types.KeyboardButton("Котел")
     btn5 = types.KeyboardButton("Контуры")
-    btn6 = types.KeyboardButton("ВКЛ/ВЫКЛ")
+    btn6 = types.KeyboardButton("Вкл/Выкл")
 
     # btn4 = types.KeyboardButton('Управление')
     markup.add(btn1, btn4, btn5, btn6)
@@ -429,7 +429,7 @@ def get_text_messages(message):
         mainmenu(message)
         delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
 
-    elif message.text == 'Опрос состояния объекта':
+    elif message.text == 'Опрос состояния':
         # qe = queue.Queue()
         # t1 = threading.Thread(target=reader_plum.run(), args=[qe])
         # t1.start()
@@ -454,7 +454,7 @@ def get_text_messages(message):
         mainmenu(message)
         delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
 
-    elif message.text == "ВКЛ/ВЫКЛ":
+    elif message.text == "Вкл/Выкл":
         setpoints(message.from_user.id)
         delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
 
