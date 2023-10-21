@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# import asyncio
-# import time
+import asyncio
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 from typing import Final
 import json
 # import sys
@@ -20,7 +22,7 @@ import set
 
 FILENAME: Final = "ecomax_data.json"
 REDACTED: Final = "**REDACTED**"
-TIMEOUT: Final = 20
+TIMEOUT = set.TIMEOUT
 DEVICE = set.DEVICE
 BAUDRATE = set.BAUDRATE
 
@@ -87,6 +89,7 @@ async def read_regdata(self):
             pass
 
         self.data = ecomax.data
+    await connection_handler.close()
 
 async def OnOff(vklvykl):
 
@@ -141,46 +144,61 @@ async def writer(message, id):
                 await ecomax.set(id[0], float(message.text.replace(',','.')))
             elif id[1] == 'QComboBox':
                 pass
-    connection_handler.close()
+    await connection_handler.close()
+
+
+async def reset_connect():
+    connection_handler = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
+    await connection_handler.close()
 
 async def run(q):
-    connection_handler = open_serial_connection(device=DEVICE, baudrate=115200)
-    async with connection_handler as connection:
+
+    """Opens the connection and gets the ecoMAX device."""
+    connection = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
+
+    # Connect to the device.
+    await connection.connect()
+
+    try:
+        # Get the ecoMAX device within 10 seconds or
+        # timeout.
         ecomax: Device = await connection.get("ecomax")
 
-        # print("Collecting data, please wait...")
-        await ecomax.get("modules")
-        # await ecomax.get("loaded", timeout=self.TIMEOUT)
-        # await ecomax.get("ecomax", timeout=self.TIMEOUT)
-        # modules = await ecomax.get("modules", timeout=self.TIMEOUT)
-
-        # water_heater_temp= await ecomax.get("water_heater_temp", timeout=TIMEOUT)
-        # outside_temp= await ecomax.get("outside_temp", timeout=TIMEOUT)
-        # return_temp= await ecomax.get("return_temp", timeout=TIMEOUT)
-        # exhaust_temp= await ecomax.get("exhaust_temp", timeout=TIMEOUT)
-        # # = await ecomax.get("", timeout=TIMEOUT)
-        # heating_temp = await ecomax.get("heating_temp", timeout=TIMEOUT)
-        try:
-            pass
-            # print(rez)
-
-            # dt = datetime.datetime.now()
-            # db.add_record_log((dt, ecomax.data["heating_temp"], ecomax.data["feeder_temp"], ecomax.data["water_heater_temp"],
-            #                        ecomax.data["outside_temp"], ecomax.data["return_temp"], ecomax.data["exhaust_temp"],
-            #                        ecomax.data['mixers'][0].data['current_temp'], str(ecomax.data["state"]), ecomax.data["alarm"], ecomax.data["fan_power"], str(ecomax.data["state"])))
-            # # try:
-            #     with open(FILENAME, "w", encoding="UTF-8") as file:
-            #         data = redact_device_data(dict(ecomax.data))
-            #         file.write(json.dumps(data, cls=DeviceDataEncoder, indent=5))
-            # except Exception as err1:
-            #     print("В файл.", err1)
-        except Exception as err:
-            pass
-            # print("Пиздец карапузики.", err)
-        # await connection.close()
+        await ecomax.get("modules", timeout=TIMEOUT)
+        # ecomax = await connection.get("ecomax", timeout=TIMEOUT)
         q.put(ecomax.data)
+    except asyncio.TimeoutError:
+        # Log the error, if device times out.
+        _LOGGER.error("Failed to get the device within {TIMEOUT} seconds")
+
+    # Close the connection.
+    await connection.close()
+
+async def run_(q):
+    connection_handler = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
+    try:
+        async with connection_handler as connection:
+            ecomax: Device = await connection.get("ecomax")
+
+            # print("Collecting data, please wait...")
+            try:
+                await ecomax.get("modules", timeout=TIMEOUT)
+            # await ecomax.get("loaded", timeout=self.TIMEOUT)
+            # await ecomax.get("ecomax", timeout=self.TIMEOUT)
+            # modules = await ecomax.get("modules", timeout=self.TIMEOUT)
+
+            except Exception as err:
+                print('Ощипка', err)
+                pass
+                # print("Пиздец карапузики.", err)
+            # await connection.close()
+            q.put(ecomax.data)
+    except Exception as err:
+        print('Ошибка подключения к контроллеру. ', err)
+        pass
     # Close the connection.
     await connection_handler.close()
+
 # def main(bot, id, q):
 #     # asyncio.run(run(q))
 #     # print(q)
