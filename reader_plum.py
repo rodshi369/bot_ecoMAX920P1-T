@@ -1,24 +1,29 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
-import logging
+# import logging
+import time
 
-_LOGGER = logging.getLogger(__name__)
+
 from typing import Final
 import json
 # import sys
 # import datetime
 
 from pyplumio import open_serial_connection
-from pyplumio.const import DeviceState
+# from pyplumio.const import DeviceState
 
 from pyplumio.devices import Device
 from pyplumio.helpers.event_manager import EventManager
 from pyplumio.helpers.typing import EventDataType
 from pyplumio.devices import mixer
 
-import db, const
+import db
+import const
 import set
+import app_logger
+
+logger = app_logger.get_logger(__name__)
 
 FILENAME: Final = "ecomax_data.json"
 REDACTED: Final = "**REDACTED**"
@@ -83,10 +88,9 @@ async def read_regdata(self):
             with open(FILENAME, "w", encoding="UTF-8") as file:
                 data = redact_device_data(dict(ecomax.data))
                 rez = set(const.CONTROLLED_PARAMETERS).issubset(list(ecomax.data))
-                print(rez)
                 file.write(json.dumps(data, cls=DeviceDataEncoder, indent=5))
         except Exception as err:
-            pass
+            logger.error("Ошибка записи файла {filejson}. {err}".format(err = err.args[0], filejson=FILENAME))
 
         self.data = ecomax.data
     await connection_handler.close()
@@ -157,19 +161,27 @@ async def run(q):
     connection = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
 
     # Connect to the device.
-    await connection.connect()
+    try:
+        await connection.connect()
+    except Exception as err:
+        print(err)
+        await connection.close()
 
     try:
         # Get the ecoMAX device within 10 seconds or
         # timeout.
+
         ecomax: Device = await connection.get("ecomax")
 
         await ecomax.get("modules", timeout=TIMEOUT)
         # ecomax = await connection.get("ecomax", timeout=TIMEOUT)
-        q.put(ecomax.data)
+        try:
+            q.put(ecomax.data)
+        except asyncio.TimeoutError:
+            print("q.put(ecomax.data)")
     except asyncio.TimeoutError:
         # Log the error, if device times out.
-        _LOGGER.error("Failed to get the device within {TIMEOUT} seconds")
+        logger.error("Failed to get the device within {time} seconds".format(time=TIMEOUT))
 
     # Close the connection.
     await connection.close()

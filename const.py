@@ -79,3 +79,5 @@ CONTROLLED_PARAMETERS = ("min_heating_target_temp.set",
                          # "parallel_offset_heat_curve",
                          "summer_mode",
                          "summer_mode_off_temp")
+
+DeviceStateRus = {0 : "Отключено", 1 : "Стабилизация",  2: "Розжиг",  3: "Работа",  4: "Надзор",  5: "Пауза",  6: "Ожидание",  7: "Тушение",  8: "Тревога",  9: "Ручной",  10: "Откр.бункера",  11: "Другое", 12 : "12?",  13: "13?",  14: "Проверка пламени"}

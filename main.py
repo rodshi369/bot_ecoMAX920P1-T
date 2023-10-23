@@ -6,6 +6,8 @@ import datetime
 import time
 import sqlite3
 import csv
+
+import const
 import db
 import asyncio
 
@@ -17,13 +19,15 @@ import queue
 import set
 
 import reader_plum
-import logging
+import app_logger
+# import logging
 # import subscribe
 
 
 # Настройка логирования в файл
-# logging.basicConfig(filename='bot.log', level=logging.ERROR)
-logging.basicConfig(filename='bot.log', format = "%(asctime)s - %(module)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s", datefmt='%H:%M:%S')
+logger = app_logger.get_logger(__name__)
+logger.info("Начало работы.")
+# logging.basicConfig(filename='bot.log', format = "%(asctime)s - %(module)s - %(levelname)s - %(funcName)s: %(lineno)d - %(message)s", datefmt='%H:%M:%S')
 
 bot = telebot.TeleBot(set.TOKEN)
 ########### Инициализируем базы данных
@@ -31,8 +35,8 @@ db.init_db()
 db.init_db_passing()
 
 ######################################
-def signal_handler():
-    pass
+# def signal_handler():
+#     pass
 
 _ON = True
 q = queue.Queue()
@@ -52,75 +56,82 @@ def main(bot, id, q):
     # setpoints(id, to_pin)
     # bot.pin_chat_message(chat_id=id, message_id=to_pin)
     # a = 0
+    t = time.localtime()
+    _time = time.strftime("%H:%M:%S", t)
+
     predvalue = {"heating_temp": (0, 0),
                  "current_temp": (0, 0),
                  "return_temp":  (0, 0),
-                 "exhaust_temp": (0, 0)}
+                 "exhaust_temp": (0, 0),
+                 "time": _time}
     arrow_up = "↑"
     arrow_down = "↓"
     while globals()["ON_OFF"]:
         asyncio.run(reader_plum.run(q))
         data_ = q.get()
-        txtstate = str(data_["state"])
 
-        heating_temp_trande = data_["heating_temp"]-predvalue["heating_temp"][0]
-        heating_temp_trande = str(round(heating_temp_trande, 2))+arrow_up if heating_temp_trande >= predvalue["heating_temp"][1] else str(round(heating_temp_trande, 2))+arrow_down
+        txtstate = const.DeviceStateRus[data_["state"].value]
 
-        current_temp_trade = data_['mixers'][0].data['current_temp']-predvalue["current_temp"][0]
-        current_temp_trade = str(round(current_temp_trade, 2))+arrow_up if current_temp_trade >= predvalue["current_temp"][1] else str(round(current_temp_trade, 2))+arrow_down
+        heating_temp_trend = data_["heating_temp"]-predvalue["heating_temp"][0]
+        heating_temp_trend = str(round(heating_temp_trend, 2))+arrow_up if heating_temp_trend >= predvalue["heating_temp"][1] else str(round(heating_temp_trend, 2))+arrow_down
 
-        return_temp_trade = data_["return_temp"]-predvalue["return_temp"][0]
-        return_temp_trade = str(round(return_temp_trade, 2))+arrow_up if return_temp_trade >= predvalue["return_temp"][1] else str(round(return_temp_trade, 2))+arrow_down
+        current_temp_trend = data_['mixers'][0].data['current_temp']-predvalue["current_temp"][0]
+        current_temp_trend = str(round(current_temp_trend, 2))+arrow_up if current_temp_trend >= predvalue["current_temp"][1] else str(round(current_temp_trend, 2))+arrow_down
 
-        exhaust_temp_trade = data_["exhaust_temp"]-predvalue["exhaust_temp"][0]
-        exhaust_temp_trade = str(round(exhaust_temp_trade, 2))+arrow_up if exhaust_temp_trade >= predvalue["exhaust_temp"][1] else str(round(exhaust_temp_trade, 2))+arrow_down
+        return_temp_trend = data_["return_temp"]-predvalue["return_temp"][0]
+        return_temp_trend = str(round(return_temp_trend, 2))+arrow_up if return_temp_trend >= predvalue["return_temp"][1] else str(round(return_temp_trend, 2))+arrow_down
 
-        textdata = "*Опрос системы:*" + \
-                   "\nРежим работы:  "+txtstate+\
-                   "\nТемп.котла:  "+str(round(data_["heating_temp"], 2))+"; "+heating_temp_trande+";  Уст: "+str(data_["heating_target"])+ \
-                   "\nТемп.смесит.: " + str(round(data_['mixers'][0].data['current_temp'], 2)) + "; " + current_temp_trade + "; Уст: " + str(data_['mixers'][0].data['target_temp']) + \
-                   "\nТемп.возвр.: " + str(round(data_["return_temp"], 2)) + "; " + return_temp_trade + \
-                   "\nТемп.прод.горен.: " + str(round(data_["exhaust_temp"], 2)) + "; "+exhaust_temp_trade + \
+        exhaust_temp_trend = data_["exhaust_temp"]-predvalue["exhaust_temp"][0]
+        exhaust_temp_trend = str(round(exhaust_temp_trend, 2))+arrow_up if exhaust_temp_trend >= predvalue["exhaust_temp"][1] else str(round(exhaust_temp_trend, 2))+arrow_down
+
+        t = time.localtime()
+        _time = time.strftime("%H:%M:%S", t)
+
+        print(5, _time)
+
+        textdata = "*Опрос системы:*  " + _time + " ("+(datetime.datetime.strptime(_time, "%H:%M:%S")-datetime.datetime.strptime(predvalue["time"], "%H:%M:%S")).seconds.__str__()+"сек.)" +\
+                   "\nРежим работы:  "+txtstate +\
+                   "\nТемп.котла:  "+str(round(data_["heating_temp"], 2))+"; "+heating_temp_trend+";  Уст: "+str(data_["heating_target"]) + \
+                   "\nТемп.смесит.: " + str(round(data_['mixers'][0].data['current_temp'], 2)) + "; " + current_temp_trend + "; Уст: " + str(data_['mixers'][0].data['target_temp']) + \
+                   "\nТемп.возвр.: " + str(round(data_["return_temp"], 2)) + "; " + return_temp_trend + \
+                   "\nТемп.прод.горен.: " + str(round(data_["exhaust_temp"], 2)) + "; "+exhaust_temp_trend + \
                    "\nТемп.подачи топл.: "+str(round(data_["feeder_temp"], 2)) +\
                    "\nТемп.ГВС:                        "+str(round(data_["water_heater_temp"], 2)) + \
-                   "\nНасос:                            " + ("Вкл" if data_['mixers'][0].data['pump'] else "Выкл") + \
+                   "\nНасос:                            " + ("Вкл" if data_['heating_pump'] else "Выкл") + \
                    "\nТемп.с наружи:              "+str(round(data_["outside_temp"], 2)) +\
-                   "\nМощность вентилятора:        "+str(data_["fan_power"])
+                   "\nМощность вентилятора:        "+str(round(data_["fan_power"], 2))
 
-        predvalue = {"heating_temp": (round(data_["heating_temp"], 2),                   float(heating_temp_trande[:-1])),
-                     "current_temp": (round(data_['mixers'][0].data['current_temp'], 2), float(current_temp_trade[:-1])),
-                     "return_temp":  (round(data_["return_temp"], 2),                    float(return_temp_trade[:-1])),
-                     "exhaust_temp": (round(data_["exhaust_temp"], 2),                   float(exhaust_temp_trade[:-1]))}
+        predvalue = {"heating_temp": (round(data_["heating_temp"], 2),                   float(heating_temp_trend[:-1])),
+                     "current_temp": (round(data_['mixers'][0].data['current_temp'], 2), float(current_temp_trend[:-1])),
+                     "return_temp":  (round(data_["return_temp"], 2),                    float(return_temp_trend[:-1])),
+                     "exhaust_temp": (round(data_["exhaust_temp"], 2),                   float(exhaust_temp_trend[:-1])),
+                     "time": _time}
         try:
             bot.edit_message_text(chat_id=id, message_id=to_pin, text=textdata, reply_markup=markup, parse_mode="Markdown")
         except Exception as err:
-            logging.error("Произошла ошибка при обработке сообщения: Результат опроса", err.args[0])
+            logger.error("Произошла ошибка при обработке сообщения: Результат опроса. {err}".format(err = err.args[0]))
 
         time.sleep(15)
+    logger.info("Завершение опроса.")
     delete = bot.delete_message(chat_id=id, message_id=to_pin)
     # delete = bot.delete_message(chat_id=CHANNEL_NAME, message_id=channel_message)
 
 
 def setpoints(id):
-    # opis = bot.get_my_description()
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Вкл.регулятор', callback_data="Вкл.регулятор"))
     markup.add(types.InlineKeyboardButton(text='Откл.регулятор', callback_data="Откл.регулятор"))
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
     bot.send_message(id, text="Управление", reply_markup=markup)
-    # markup = types.InlineKeyboardMarkup()
-    # markup.add(types.InlineKeyboardButton(text="Вкл/Отключить опрос", callback_data=1))
-    # bot.send_message(id, reply_markup=markup)
 
 
 def restart_program():
     python = sys.executable
     try:
-        # os.execv(python, python, *sys.argv)
-        # os.execl(python, python, 'd:\PYthon\bot_ecoMAX920P1-T\main.py')
         os.execv(sys.executable, [python] + sys.argv)
     except Exception as err:
-        print(err)
+        logger.error("Ошибка перезапуска Бота. {err}".format(err = err.args[0]))
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def query_handler(call):
@@ -131,21 +142,25 @@ def query_handler(call):
         try:
             bot.answer_callback_query(callback_query_id=call.id, text='Отбой')
         except Exception as err:
-            logging.error("Произошла ошибка при обработке сообщения: Отмена", err.args[0])
+            logger.error("Произошла ошибка при обработке сообщения: Отмена. {err}".format(err = err.args[0]))
         # answer = 'Выберите действие'
 
     elif select == "Остановить":
         globals()["ON_OFF"] = False
-
         try:
             bot.answer_callback_query(callback_query_id=call.id, text='Остановка')
         except Exception as err:
-            logging.error("Произошла ошибка при обработке сообщения: Остановить", err.args[0])
+            logger.error("Произошла ошибка при обработке сообщения: Остановить. {err}".format(err = err.args[0]))
         # answer = 'Выберите действие'
 
     elif select == "Перезапустить бот":
+        logger.info("Перезагрузка бота")
         bot.answer_callback_query(callback_query_id=call.id, text='Перезапуск')
         restart_program()
+        # answer = 'Выберите действие'
+    elif select == "Выключить компьютер":
+        bot.answer_callback_query(callback_query_id=call.id, text='ShutDown')
+        os.system("shutdown /s /t 1")
         # answer = 'Выберите действие'
 
     elif select == 'Вкл.регулятор':
@@ -182,7 +197,7 @@ def query_handler(call):
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=answer,
                           reply_markup=None)
     except Exception as err:
-        logging.error("", err.args[0])
+        logger.error("Ошибка редактирования сообщения. {err}".format(err=err.args[0]))
 
 def writer(message, id):
     rez = asyncio.run(reader_plum.writer(message, id))
@@ -196,6 +211,7 @@ class User:
         self.password = None
 
 # isauthorized = False
+
 
 user = User(None)
 
@@ -236,16 +252,16 @@ def inputpass(message, schet):
 
 def verifypass(message, schet):
     if message.text == str(isauthorized[str(message.from_user.id)]["pass"]):
-        bot.send_message(message.from_user.id, "Небось угадал.")
-        isauthorized[str(message.from_user.id)]["active"] = True
+        bot.send_message(message.chat.id, "Небось угадал.")
+        isauthorized[str(message.chat.id)]["active"] = True
         mainmenu(message)
     else:
         schet = schet + 1
         if schet <= 2:
             inputpass(message, schet)
         else:
-            bot.send_message(message.from_user.id, "Вы какой то подозрительный.")
-            bot.clear_step_handler_by_chat_id(chat_id=message.from_user.id)
+            bot.send_message(message.chat.id, "Вы какой то подозрительный.")
+            bot.clear_step_handler_by_chat_id(chat_id=message.chat.id)
 
 
 ######################################################################################### Проверка пароля
@@ -262,6 +278,7 @@ def makeCSV(data):
 
             return w_file
     except Exception as err:
+        logger.error("Ошибка {err}".format(err=err.args[0]))
         pass
 
 
@@ -280,7 +297,7 @@ def start(message):
     if isauthorized.get(str(message.from_user.id)) == None or isauthorized.__len__() == 0:
         registration(message)
     elif isauthorized[str(message.from_user.id)]["active"] is True:
-        bot.send_message(message.from_user.id, "Вы авторизованны.")
+        bot.send_message(message.chat.id, "Вы авторизованны.")
         mainmenu(message)
         return
     else:
@@ -300,8 +317,8 @@ def registration(message):
         name = message.text
         user = User(message.from_user.id)
         # user_dict[chat_id] = user
-        bot.send_message(message.from_user.id, 'Начнём регистацию.')
-        msg = bot.send_message(message.from_user.id, 'Введите ключ проекта')
+        bot.send_message(message.chat.id, 'Начнём регистацию.')
+        msg = bot.send_message(message.chat.id, 'Введите ключ проекта')
         bot.register_next_step_handler(msg, process_code_step, user)
     except Exception as e:
         bot.reply_to(message, 'Опаньки(oooops)')
@@ -314,7 +331,7 @@ def process_code_step(message, user):
         # user = User(message.from_user.id)
         user.code = message.text
         if user.code != '369':
-            bot.send_message(message.from_user.id, "Неправильный ключ. Обратитесь к Буратино.")
+            bot.send_message(message.chat.id, "Неправильный ключ. Обратитесь к Буратино.")
             return
         msg = bot.reply_to(message, 'Введите пароль?')
         bot.register_next_step_handler(msg, process_pass_step, user)
@@ -343,14 +360,14 @@ def process_pass_step(message, user):
 
 
 ########################################################################### Регистрация
-def checkregistrationаvtorizacion(message):
+def checkregistrationаvtorization(message):
     try:
         if message == None:
-            query = """SELECT *  FROM users """
+            query = "SELECT *  FROM users "
             param = {}
         else:
             # query = """SELECT userid, first_name, last_name, username  FROM users WHERE userid = :userid and first_name =:first_name and last_name = :last_name and username = :username"""
-            query = """SELECT userid, first_name, last_name, username, pass, datareg  FROM users WHERE userid = :userid and first_name =:first_name"""
+            query = "SELECT userid, first_name, last_name, username, pass, datareg  FROM users WHERE userid = :userid and first_name =:first_name"
             param = {"userid": message.from_user.id, "first_name": message.from_user.first_name}
 
         rez = db.get_record(query, param)
@@ -375,24 +392,24 @@ def mainmenu(message):
     # btn4 = types.KeyboardButton('Управление')
     markup.add(btn1, btn4, btn5, btn6, btn7)
 
-    id_mess = bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup).message_id
+    id_mess = bot.send_message(message.chat.id, "Выберите действие", reply_markup=markup).message_id
     # delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
     # bot.send_message(message.from_user.id, reply_markup=markup)
 
 
-def ControlPanel(message):
+def controlpanel(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=3)
     btn1 = types.KeyboardButton("Котел")
     btn2 = types.KeyboardButton("Контуры")
     btn3 = types.KeyboardButton("ВКЛ/ВЫКЛ")
     btn4 = types.KeyboardButton('Главное меню')
     markup.add(btn1, btn2, btn3, btn4)
-    bot.send_message(message.from_user.id, "Выберите действие", reply_markup=markup)
+    bot.send_message(message.chat.id, "Выберите действие", reply_markup=markup)
 
 
-def boiler(massage):
+def boiler(message):
 
-    id = massage.from_user.id
+    id = message.chat.id
 
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
     # bot.send_chat_action(chat_id=id, action=telebot.con.constants.ChatAction.TYPING)
@@ -400,9 +417,13 @@ def boiler(massage):
     data_ = q.get()
     # data_ = globals()['q'].get()
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(text='Погодное управление: '+"Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" +str(data_['heating_weather_control'].value), callback_data="Погодное управление"))
-    markup.add(types.InlineKeyboardButton(text='Кривая нагрева: '+str(data_['heating_heat_curve'].value), callback_data="Кривая нагрева"))
-    markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг: ' + str(data_['heating_heat_curve_shift'].value), callback_data="Параллельный сдвиг"))
+    markup.add(types.InlineKeyboardButton(text='Погодное управление: ' +
+                                               "Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" + str(data_['heating_weather_control'].value),
+                                          callback_data="Погодное управление"))
+    markup.add(types.InlineKeyboardButton(text='Кривая нагрева: '+str(data_['heating_heat_curve'].value),
+                                          callback_data="Кривая нагрева"))
+    markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг: ' + str(data_['heating_heat_curve_shift'].value),
+                                          callback_data="Параллельный сдвиг"))
     # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
     # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
@@ -413,8 +434,8 @@ def boiler(massage):
     bot.edit_message_text(chat_id=id, message_id=to_pin, text=text, reply_markup=markup, parse_mode="Markdown")
 
 
-def contour(massage):
-    id = massage.from_user.id
+def contour(message):
+    id = message.chat.id
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
 
     asyncio.run(reader_plum.run(q))
@@ -433,12 +454,12 @@ def contour(massage):
     bot.edit_message_text(chat_id=id, message_id=to_pin, text='*Управление отоплением:*' +
                                                               "\nТемп. смесителя:     "+str(round(data_['mixers'][0].data['current_temp'], 2))+"; Уст: "+str(data_['mixers'][0].data['target_temp']) +
                                                               "\nТемп. возврата:      " + str(round(data_['return_temp'], 2))
-                          , reply_markup=markup, parse_mode="Markdown")
+                                                         , reply_markup=markup, parse_mode="Markdown")
 
 
-def Bot(massage):
+def Bot(message):
 
-    id = massage.from_user.id
+    id = message.chat.id
 
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
     # bot.send_chat_action(chat_id=id, action=telebot.con.constants.ChatAction.TYPING)
@@ -447,6 +468,7 @@ def Bot(massage):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Сбросить опрос', callback_data="Остановить"))
     markup.add(types.InlineKeyboardButton(text='Перезапустить бот', callback_data='Перезапустить бот'))
+    markup.add(types.InlineKeyboardButton(text='Выключить компьютер', callback_data='Выключить компьютер'))
     markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
     # bot.send_message(id, text="Управление", reply_markup=markup)
     text = "*Управление ботом:*"
@@ -478,59 +500,58 @@ def get_text_messages(message):
 
     if message.text == 'Главное меню':
         mainmenu(message)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     elif message.text == 'Опрос состояния':
         if globals()["stream"] in threading._active:
-            delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+            delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             return
         else:
             globals()["ON_OFF"] = False
             globals()["stream"] = 0
 
         if globals()["ON_OFF"] == True:
-            delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+            delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             return
 
         globals()["ON_OFF"] = True
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
-        id = message.from_user.id
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        id = message.chat.id
         t1 = threading.Thread(target=main, args=[bot, id, q], daemon=True)
         t1.start()
-
-        logging.info("Запущен процесс ",t1.name)
+        logger.info("Запущен процесс {name}".format(name = t1.name) )
         globals()["stream"] = t1.ident
-        t1.join()
-        # opros(id)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        # t1.join()
+        # delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     # elif message.text == 'Вкл':
     #     pass
     elif message.text == 'Отключить опрос':
         globals()["ON_OFF"] = False
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     elif message.text == "Управление":
-        ControlPanel(message)
+        controlpanel(message)
         # setpoints(message.from_user.id)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     elif message.text == "Главное меню":
         mainmenu(message)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     elif message.text == "Вкл/Выкл":
         setpoints(message.from_user.id)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     elif message.text == "Котел":
         boiler(message)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
     elif message.text == "Контуры":
         contour(message)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     elif message.text =="Bot":
         Bot(message)
-        delete = bot.delete_message(chat_id=message.from_user.id, message_id=message.message_id)
-# bot.polling(none_stop=True, interval=0)  # обязательная для работы бота часть
+        delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+
+
 bot.infinity_polling(timeout=10, long_polling_timeout=5)
