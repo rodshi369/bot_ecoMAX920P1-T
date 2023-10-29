@@ -13,16 +13,15 @@ import asyncio
 
 import telebot
 from telebot import types
+
+
+# import multiprocessing
 import threading
 import queue
-# import const
 import set
 
 import reader_plum
 import app_logger
-# import logging
-# import subscribe
-
 
 # Настройка логирования в файл
 logger = app_logger.get_logger(__name__)
@@ -34,23 +33,20 @@ bot = telebot.TeleBot(set.TOKEN)
 db.init_db()
 db.init_db_passing()
 
-######################################
-# def signal_handler():
-#     pass
-
 _ON = True
 q = queue.Queue()
 ON_OFF = False
 stream = 0
-# thr = threading.Thread(target=subscribe.subcribe_sensors)
-# thr.start()
 
 
-def main(bot, id, q):
+# def mainBot():
+def survey_process(bot, id, q):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(text='Остановить', callback_data="Остановить"))
-
-    to_pin = bot.send_message(id, 'Читаю данные...', reply_markup=markup).message_id
+    try:
+        to_pin = bot.send_message(id, 'Читаю данные...', reply_markup=markup).message_id
+    except Exception as err:
+        logger.error("Ошибка при обработке сообщения: Читаю данные. {err}".format(err=err.args[0]))
     # CHANNEL_NAME = '-1001909359532'
     # channel_message = bot.send_message(CHANNEL_NAME, 'Читаю данные...').message_id
     # setpoints(id, to_pin)
@@ -61,7 +57,7 @@ def main(bot, id, q):
 
     predvalue = {"heating_temp": (0, 0),
                  "current_temp": (0, 0),
-                 "return_temp":  (0, 0),
+                 "return_temp": (0, 0),
                  "exhaust_temp": (0, 0),
                  "time": _time}
     arrow_up = "↑"
@@ -72,49 +68,55 @@ def main(bot, id, q):
 
         txtstate = const.DeviceStateRus[data_["state"].value]
 
-        heating_temp_trend = data_["heating_temp"]-predvalue["heating_temp"][0]
-        heating_temp_trend = str(round(heating_temp_trend, 2))+arrow_up if heating_temp_trend >= predvalue["heating_temp"][1] else str(round(heating_temp_trend, 2))+arrow_down
+        heating_temp_trend = data_["heating_temp"] - predvalue["heating_temp"][0]
+        heating_temp_trend = str(round(heating_temp_trend, 2)) + arrow_up if heating_temp_trend >= predvalue["heating_temp"][1] else str(
+            round(heating_temp_trend, 2)) + arrow_down
 
-        current_temp_trend = data_['mixers'][0].data['current_temp']-predvalue["current_temp"][0]
-        current_temp_trend = str(round(current_temp_trend, 2))+arrow_up if current_temp_trend >= predvalue["current_temp"][1] else str(round(current_temp_trend, 2))+arrow_down
+        current_temp_trend = data_['mixers'][0].data['current_temp'] - predvalue["current_temp"][0]
+        current_temp_trend = str(round(current_temp_trend, 2)) + arrow_up if current_temp_trend >= predvalue["current_temp"][1] else str(
+            round(current_temp_trend, 2)) + arrow_down
 
-        return_temp_trend = data_["return_temp"]-predvalue["return_temp"][0]
-        return_temp_trend = str(round(return_temp_trend, 2))+arrow_up if return_temp_trend >= predvalue["return_temp"][1] else str(round(return_temp_trend, 2))+arrow_down
+        return_temp_trend = data_["return_temp"] - predvalue["return_temp"][0]
+        return_temp_trend = str(round(return_temp_trend, 2)) + arrow_up if return_temp_trend >= predvalue["return_temp"][1] else str(
+            round(return_temp_trend, 2)) + arrow_down
 
-        exhaust_temp_trend = data_["exhaust_temp"]-predvalue["exhaust_temp"][0]
-        exhaust_temp_trend = str(round(exhaust_temp_trend, 2))+arrow_up if exhaust_temp_trend >= predvalue["exhaust_temp"][1] else str(round(exhaust_temp_trend, 2))+arrow_down
+        exhaust_temp_trend = data_["exhaust_temp"] - predvalue["exhaust_temp"][0]
+        exhaust_temp_trend = str(round(exhaust_temp_trend, 2)) + arrow_up if exhaust_temp_trend >= predvalue["exhaust_temp"][1] else str(
+            round(exhaust_temp_trend, 2)) + arrow_down
 
         t = time.localtime()
         _time = time.strftime("%H:%M:%S", t)
 
-        print(5, _time)
-
-        textdata = "*Опрос системы:*  " + _time + " ("+(datetime.datetime.strptime(_time, "%H:%M:%S")-datetime.datetime.strptime(predvalue["time"], "%H:%M:%S")).seconds.__str__()+"сек.)" +\
-                   "\nРежим работы:  "+txtstate +\
-                   "\nТемп.котла:  "+str(round(data_["heating_temp"], 2))+"; "+heating_temp_trend+";  Уст: "+str(data_["heating_target"]) + \
-                   "\nТемп.смесит.: " + str(round(data_['mixers'][0].data['current_temp'], 2)) + "; " + current_temp_trend + "; Уст: " + str(data_['mixers'][0].data['target_temp']) + \
+        textdata = "*Опрос системы:*  " + _time + \
+                   " (" + (datetime.datetime.strptime(_time, "%H:%M:%S") - datetime.datetime.strptime(predvalue["time"], "%H:%M:%S")).seconds.__str__() + "сек.)" + \
+                   "\nРежим работы:  " + txtstate + \
+                   "\nТемп.котла:  " + str(round(data_["heating_temp"], 2)) + "; " + heating_temp_trend + ";  Уст: " + str(data_["heating_target"]) + \
+                   "\nТемп.смесит.: " + str(round(data_['mixers'][0].data['current_temp'], 2)) + "; " + current_temp_trend + "; Уст: " \
+                   + str(data_['mixers'][0].data['target_temp']) + \
                    "\nТемп.возвр.: " + str(round(data_["return_temp"], 2)) + "; " + return_temp_trend + \
-                   "\nТемп.прод.горен.: " + str(round(data_["exhaust_temp"], 2)) + "; "+exhaust_temp_trend + \
-                   "\nТемп.подачи топл.: "+str(round(data_["feeder_temp"], 2)) +\
-                   "\nТемп.ГВС:                        "+str(round(data_["water_heater_temp"], 2)) + \
+                   "\nТемп.прод.горен.: " + str(round(data_["exhaust_temp"], 2)) + "; " + exhaust_temp_trend + \
+                   "\nТемп.подачи топл.: " + str(round(data_["feeder_temp"], 2)) + \
+                   "\nТемп.ГВС:                        " + str(round(data_["water_heater_temp"], 2)) + \
                    "\nНасос:                            " + ("Вкл" if data_['heating_pump'] else "Выкл") + \
-                   "\nТемп.с наружи:              "+str(round(data_["outside_temp"], 2)) +\
-                   "\nМощность вентилятора:        "+str(round(data_["fan_power"], 2))
+                   "\nМощность вентилятора:        " + str(round(data_["fan_power"], 2)) + \
+                   "\nТемп.с наружи:              " + str(round(data_["outside_temp"], 2))
 
-        predvalue = {"heating_temp": (round(data_["heating_temp"], 2),                   float(heating_temp_trend[:-1])),
+        predvalue = {"heating_temp": (round(data_["heating_temp"], 2), float(heating_temp_trend[:-1])),
                      "current_temp": (round(data_['mixers'][0].data['current_temp'], 2), float(current_temp_trend[:-1])),
-                     "return_temp":  (round(data_["return_temp"], 2),                    float(return_temp_trend[:-1])),
-                     "exhaust_temp": (round(data_["exhaust_temp"], 2),                   float(exhaust_temp_trend[:-1])),
+                     "return_temp": (round(data_["return_temp"], 2), float(return_temp_trend[:-1])),
+                     "exhaust_temp": (round(data_["exhaust_temp"], 2), float(exhaust_temp_trend[:-1])),
                      "time": _time}
         try:
             bot.edit_message_text(chat_id=id, message_id=to_pin, text=textdata, reply_markup=markup, parse_mode="Markdown")
         except Exception as err:
-            logger.error("Произошла ошибка при обработке сообщения: Результат опроса. {err}".format(err = err.args[0]))
+            logger.error("Ошибка при обработке сообщения: Результат опроса. {err}".format(err=err.args[0]))
 
         time.sleep(15)
     logger.info("Завершение опроса.")
-    delete = bot.delete_message(chat_id=id, message_id=to_pin)
-    # delete = bot.delete_message(chat_id=CHANNEL_NAME, message_id=channel_message)
+    try:
+        delete = bot.delete_message(chat_id=id, message_id=to_pin)
+    except Exception as err:
+        logger.error("Ошибка при обработке удаления : Результат опроса. {err}".format(err=err.args[0]))
 
 
 def setpoints(id):
@@ -130,7 +132,7 @@ def restart_program():
     try:
         os.execv(sys.executable, [python] + sys.argv)
     except Exception as err:
-        logger.error("Ошибка перезапуска Бота. {err}".format(err = err.args[0]))
+        logger.error("Ошибка перезапуска Бота. {err}".format(err=err.args[0]))
 
 
 @bot.callback_query_handler(func=lambda call: True)
@@ -142,7 +144,7 @@ def query_handler(call):
         try:
             bot.answer_callback_query(callback_query_id=call.id, text='Отбой')
         except Exception as err:
-            logger.error("Произошла ошибка при обработке сообщения: Отмена. {err}".format(err = err.args[0]))
+            logger.error("Произошла ошибка при обработке сообщения: Отмена. {err}".format(err=err.args[0]))
         # answer = 'Выберите действие'
 
     elif select == "Остановить":
@@ -150,12 +152,15 @@ def query_handler(call):
         try:
             bot.answer_callback_query(callback_query_id=call.id, text='Остановка')
         except Exception as err:
-            logger.error("Произошла ошибка при обработке сообщения: Остановить. {err}".format(err = err.args[0]))
+            logger.error("Произошла ошибка при обработке сообщения: Остановить. {err}".format(err=err.args[0]))
         # answer = 'Выберите действие'
 
     elif select == "Перезапустить бот":
         logger.info("Перезагрузка бота")
-        bot.answer_callback_query(callback_query_id=call.id, text='Перезапуск')
+        try:
+            bot.answer_callback_query(callback_query_id=call.id, text='Перезапуск')
+        except Exception as err:
+            logger.error("Ошибка при обработке сообщения: Перезапустить бот. {err}".format(err=err.args[0]))
         restart_program()
         # answer = 'Выберите действие'
     elif select == "Выключить компьютер":
@@ -166,21 +171,27 @@ def query_handler(call):
     elif select == 'Вкл.регулятор':
         # await reader_plum.OnOff("Вкл")
         asyncio.run(reader_plum.OnOff("Вкл"))
-        bot.answer_callback_query(callback_query_id=call.id, text="Вкл.регулятор")
+        try:
+            bot.answer_callback_query(callback_query_id=call.id, text="Вкл.регулятор")
+        except Exception as err:
+            logger.error("Ошибка при обработке сообщения: Вкл.регулятор. {err}".format(err=err.args[0]))
         answer = 'Включено'
     elif select == 'Откл.регулятор':
         # await reader_plum.OnOff("Выкл")
         asyncio.run(reader_plum.OnOff("Выкл"))
-        bot.answer_callback_query(callback_query_id=call.id, text="Откл.регулятор")
+        try:
+            bot.answer_callback_query(callback_query_id=call.id, text="Откл.регулятор")
+        except Exception as err:
+            logger.error("Ошибка при обработке сообщения: Откл.регулятор. {err}".format(err=err.args[0]))
         answer = "Выключено"
     #################################### contour
     elif select == 'Кривая нагрева контура':
         msg = bot.send_message(call.from_user.id, "Введите значение -: Кривая нагрева контура")
-        bot.register_next_step_handler(msg,  writer, id =('heat_curve', 'QDoubleSpinBox', 'mixer'))
+        bot.register_next_step_handler(msg, writer, id=('heat_curve', 'QDoubleSpinBox', 'mixer'))
 
     elif select == 'Параллельный сдвиг контура':
         msg = bot.send_message(call.from_user.id, "Введите значение -Параллельный сдвиг контура:")
-        bot.register_next_step_handler(msg,  writer, id=('parallel_offset_heat_curve', 'QSpinBox', 'mixer'))
+        bot.register_next_step_handler(msg, writer, id=('parallel_offset_heat_curve', 'QSpinBox', 'mixer'))
 
         ################################ boiler
     elif select == '"Кривая нагрева"':
@@ -195,9 +206,10 @@ def query_handler(call):
         pass
     try:
         bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=answer,
-                          reply_markup=None)
+                              reply_markup=None)
     except Exception as err:
         logger.error("Ошибка редактирования сообщения. {err}".format(err=err.args[0]))
+
 
 def writer(message, id):
     rez = asyncio.run(reader_plum.writer(message, id))
@@ -209,8 +221,6 @@ class User:
         self.id = id
         self.code = None
         self.password = None
-
-# isauthorized = False
 
 
 user = User(None)
@@ -233,6 +243,7 @@ def _init_propusk():
     else:
         pass
     return otvet
+
 
 isauthorized = _init_propusk()
 
@@ -408,7 +419,6 @@ def controlpanel(message):
 
 
 def boiler(message):
-
     id = message.chat.id
 
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
@@ -417,21 +427,27 @@ def boiler(message):
     data_ = q.get()
     # data_ = globals()['q'].get()
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(text='Погодное управление: ' +
-                                               "Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" + str(data_['heating_weather_control'].value),
-                                          callback_data="Погодное управление"))
-    markup.add(types.InlineKeyboardButton(text='Кривая нагрева: '+str(data_['heating_heat_curve'].value),
-                                          callback_data="Кривая нагрева"))
-    markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг: ' + str(data_['heating_heat_curve_shift'].value),
-                                          callback_data="Параллельный сдвиг"))
-    # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
-    # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
-    markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
-    # bot.send_message(id, text="Управление", reply_markup=markup)
-    text = "*Управление котлом:*" +\
-            "\nТемп. котла:             " + str(round(data_["heating_temp"], 2)) + ";  Уст: " + str(data_["heating_target"])
+    try:
+        markup.add(types.InlineKeyboardButton(text='Погодное управление: ' +
+                                                   "Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" + str(data_['heating_weather_control'].value),
+                                              callback_data="Погодное управление"))
+        markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ' + str(data_['heating_heat_curve'].value),
+                                              callback_data="Кривая нагрева"))
+        markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг: ' + str(data_['heating_heat_curve_shift'].value),
+                                              callback_data="Параллельный сдвиг"))
+        # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
+        # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
+        markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
+        # bot.send_message(id, text="Управление", reply_markup=markup)
+        text = "*Управление котлом:*" + \
+               "\nТемп. котла:             " + str(round(data_["heating_temp"], 2)) + ";  Уст: " + str(data_["heating_target"])
 
-    bot.edit_message_text(chat_id=id, message_id=to_pin, text=text, reply_markup=markup, parse_mode="Markdown")
+        bot.edit_message_text(chat_id=id, message_id=to_pin, text=text, reply_markup=markup, parse_mode="Markdown")
+    except Exception as err:
+        logger.error("Ошибка получения данных котла. Повторите.")
+        ip_mes = bot.send_message(id, "Ошибка получения данных котла.").message_id
+        time.sleep(5)
+        bot.delete_message(id, ip_mes)
 
 
 def contour(message):
@@ -442,23 +458,29 @@ def contour(message):
     data_ = q.get()
     # data_ = globals()['q'].get()
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton(
-        text='Погодное управление: ' + "Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" + str(
-            data_['heating_weather_control'].value), callback_data="Погодное управление"))
-    markup.add(types.InlineKeyboardButton(text='Кривая нагрева контура: '+str(data_['mixers'][0].data['heat_curve'].value), callback_data="Кривая нагрева контура"))
-    markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг контура: ' + str(data_['mixers'][0].data['parallel_offset_heat_curve'].value-20), callback_data="Параллельный сдвиг контура"))
-    # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
-    # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
-    markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
-    # bot.send_message(id, text="Управление", reply_markup=markup)
-    bot.edit_message_text(chat_id=id, message_id=to_pin, text='*Управление отоплением:*' +
-                                                              "\nТемп. смесителя:     "+str(round(data_['mixers'][0].data['current_temp'], 2))+"; Уст: "+str(data_['mixers'][0].data['target_temp']) +
-                                                              "\nТемп. возврата:      " + str(round(data_['return_temp'], 2))
-                                                         , reply_markup=markup, parse_mode="Markdown")
-
+    try:
+        markup.add(types.InlineKeyboardButton(
+            text='Погодное управление: ' + "Вкл" if str(data_['heating_weather_control'].value) == "on" else "Выкл" + str(
+                data_['heating_weather_control'].value), callback_data="Погодное управление"))
+        markup.add(types.InlineKeyboardButton(text='Кривая нагрева контура: ' + str(data_['mixers'][0].data['heat_curve'].value), callback_data="Кривая нагрева контура"))
+        markup.add(types.InlineKeyboardButton(text='Параллельный сдвиг контура: ' + str(data_['mixers'][0].data['parallel_offset_heat_curve'].value - 20),
+                                              callback_data="Параллельный сдвиг контура"))
+        # markup.add(types.InlineKeyboardButton(text='Погодное управление: ', callback_data="Погодное управление"))
+        # markup.add(types.InlineKeyboardButton(text='Кривая нагрева: ', callback_data="Кривая нагрева"))
+        markup.add(types.InlineKeyboardButton(text='Отмена', callback_data="Отмена"))
+        # bot.send_message(id, text="Управление", reply_markup=markup)
+        bot.edit_message_text(chat_id=id, message_id=to_pin, text='*Управление отоплением:*' +
+                                                                  "\nТемп. смесителя:     " + str(round(data_['mixers'][0].data['current_temp'], 2)) + "; Уст: " + str(
+            data_['mixers'][0].data['target_temp']) +
+                                                                  "\nТемп. возврата:      " + str(round(data_['return_temp'], 2))
+                              , reply_markup=markup, parse_mode="Markdown")
+    except Exception as err:
+        logger.error("Ошибка получения данных котла. Повторите.")
+        ip_mes = bot.send_message(id, "Ошибка получения данных контура.").message_id
+        time.sleep(5)
+        bot.delete_message(id, ip_mes)
 
 def Bot(message):
-
     id = message.chat.id
 
     to_pin = bot.send_message(id, 'Читаю данные...').message_id
@@ -476,6 +498,13 @@ def Bot(message):
     bot.edit_message_text(chat_id=id, message_id=to_pin, text=text, reply_markup=markup, parse_mode="Markdown")
 
 
+# CHANNEL_NAME = '-1001909359532'
+# # @bot.message_handler(content_types=['photo', 'text'])
+# @bot.channel_post_handler(content_types=['text'])
+# def repost_msg(message):
+#
+#     bot.copy_message(CHANNEL_NAME, message.chat.id, message.message_id)
+#
 
 @bot.message_handler(content_types=['text'])
 def get_text_messages(message):
@@ -517,14 +546,13 @@ def get_text_messages(message):
         globals()["ON_OFF"] = True
         delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         id = message.chat.id
-        t1 = threading.Thread(target=main, args=[bot, id, q], daemon=True)
+        t1 = threading.Thread(target=survey_process, args=[bot, id, q], daemon=True)
+        # t1 = multiprocessing.Process(target=survey_process, args=(bot, id, q,))
         t1.start()
-        logger.info("Запущен процесс {name}".format(name = t1.name) )
-        globals()["stream"] = t1.ident
+        logger.info("Запущен процесс {name}".format(name=t1.name))
         # t1.join()
+        globals()["stream"] = t1.ident
         # delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-    # elif message.text == 'Вкл':
-    #     pass
     elif message.text == 'Отключить опрос':
         globals()["ON_OFF"] = False
         delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
@@ -549,9 +577,10 @@ def get_text_messages(message):
     elif message.text == "Контуры":
         contour(message)
         delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-    elif message.text =="Bot":
+    elif message.text == "Bot":
         Bot(message)
         delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
 bot.infinity_polling(timeout=10, long_polling_timeout=5)
+

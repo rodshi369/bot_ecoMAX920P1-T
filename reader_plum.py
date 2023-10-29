@@ -75,6 +75,7 @@ class DeviceDataEncoder(json.JSONEncoder):
 
         return {"__type": str(type(o)), "repr": repr(o)}
 
+
 async def read_regdata(self):
     # FILENAME =
     connection_handler = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
@@ -94,6 +95,7 @@ async def read_regdata(self):
 
         self.data = ecomax.data
     await connection_handler.close()
+
 
 async def OnOff(vklvykl):
 
@@ -116,6 +118,7 @@ async def OnOff(vklvykl):
             pass
     # Close the connection.
     await connection.close()
+
 
 async def writer(message, id):
     # парам = self.sender().sender().objectName()
@@ -155,16 +158,20 @@ async def reset_connect():
     connection_handler = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
     await connection_handler.close()
 
-async def run(q):
 
+async def run(q):
     """Opens the connection and gets the ecoMAX device."""
     connection = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
-
+    # logger.info("До подключения. ")
     # Connect to the device.
     try:
+        # t = time.strftime("%H:%M:%S", time.localtime())
+        # logger.info("До подключения. "+t)
         await connection.connect()
-    except Exception as err:
-        print(err)
+        # t = time.strftime("%H:%M:%S", time.localtime())
+        # logger.info("После подключения. {t}".format(t=t))
+    except asyncio.TimeoutError as err:
+        logger.error("Ошибка подключения к устройству. {err}".format(err=err))
         await connection.close()
 
     try:
@@ -173,55 +180,24 @@ async def run(q):
 
         ecomax: Device = await connection.get("ecomax")
 
+        # t = time.strftime("%H:%M:%S", time.localtime())
+        # logger.info("               Получение данных начало. {t}".format(t=t))
         await ecomax.get("modules", timeout=TIMEOUT)
+        # t = time.strftime("%H:%M:%S", time.localtime())
+        # logger.info("               Получение данных конец. {t}".format(t=t))
+        # await ecomax.get("ecomax", timeout=TIMEOUT)
         # ecomax = await connection.get("ecomax", timeout=TIMEOUT)
         try:
             q.put(ecomax.data)
-        except asyncio.TimeoutError:
-            print("q.put(ecomax.data)")
+        except asyncio.TimeoutError as err:
+            logger.error("Ошибка передачи данных в queue. {err}".format(err=err))
+
     except asyncio.TimeoutError:
         # Log the error, if device times out.
         logger.error("Failed to get the device within {time} seconds".format(time=TIMEOUT))
-
     # Close the connection.
     await connection.close()
-
-async def run_(q):
-    connection_handler = open_serial_connection(device=DEVICE, baudrate=BAUDRATE)
-    try:
-        async with connection_handler as connection:
-            ecomax: Device = await connection.get("ecomax")
-
-            # print("Collecting data, please wait...")
-            try:
-                await ecomax.get("modules", timeout=TIMEOUT)
-            # await ecomax.get("loaded", timeout=self.TIMEOUT)
-            # await ecomax.get("ecomax", timeout=self.TIMEOUT)
-            # modules = await ecomax.get("modules", timeout=self.TIMEOUT)
-
-            except Exception as err:
-                print('Ощипка', err)
-                pass
-                # print("Пиздец карапузики.", err)
-            # await connection.close()
-            q.put(ecomax.data)
-    except Exception as err:
-        print('Ошибка подключения к контроллеру. ', err)
-        pass
-    # Close the connection.
-    await connection_handler.close()
-
-# def main(bot, id, q):
-#     # asyncio.run(run(q))
-#     # print(q)
-#     # time.sleep(30)
-#     # #
-#     while globals()["ON_OFF"]:
-#         # print(i)
-#         asyncio.run(run(q))
-#         to_pin = bot.send_message(id, 'text').message_id
-#         bot.pin_chat_message(chat_id=id, message_id=to_pin)
-#         time.sleep(30)
+    return ecomax.data
 
 
 # if __name__ == "__main__":

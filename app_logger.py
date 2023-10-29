@@ -3,12 +3,13 @@
 # -*- coding: utf-8 -*-
 
 import logging
-
+import sys
 _log_format = f"%(asctime)s - [%(levelname)s] - %(name)s - (%(filename)s).%(funcName)s(%(lineno)d) - %(message)s"
 
 
 def get_file_handler():
-    file_handler = logging.FileHandler("bot.log")
+    path = sys.argv[0].replace("main.py", "")
+    file_handler = logging.FileHandler(path + "bot.log")
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(logging.Formatter(_log_format))
     return file_handler
