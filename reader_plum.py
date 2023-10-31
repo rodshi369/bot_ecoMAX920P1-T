@@ -9,9 +9,9 @@ from typing import Final
 import json
 # import sys
 # import datetime
-
+import pyplumio.const
 from pyplumio import open_serial_connection
-# from pyplumio.const import DeviceState
+from pyplumio.const import AlertType
 
 from pyplumio.devices import Device
 from pyplumio.helpers.event_manager import EventManager

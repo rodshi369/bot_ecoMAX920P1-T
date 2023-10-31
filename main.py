@@ -15,11 +15,15 @@ import telebot
 from telebot import types
 
 
-# import multiprocessing
+import multiprocessing
+from  multiprocessing import Process
+
 import threading
 import queue
 import set
 
+
+from pyplumio.const import AlertType
 import reader_plum
 import app_logger
 
@@ -34,6 +38,7 @@ db.init_db()
 db.init_db_passing()
 
 _ON = True
+# q = multiprocessing.Queue()
 q = queue.Queue()
 ON_OFF = False
 stream = 0
@@ -63,10 +68,13 @@ def survey_process(bot, id, q):
     arrow_up = "↑"
     arrow_down = "↓"
     while globals()["ON_OFF"]:
-        asyncio.run(reader_plum.run(q))
-        data_ = q.get()
-
-        txtstate = const.DeviceStateRus[data_["state"].value]
+        # que = multiprocessing.Queue
+        data_ = asyncio.run(reader_plum.run(q))
+        # data_ = q.get()
+        try:
+            txtstate = const.DeviceStateRus[data_["state"]]
+        except Exception as err:
+            logger.error("Ошибка параметра state {d1}   {d2}   {err}".format(d1=data_["state"],d2=data_["state"].value, err=err))
 
         heating_temp_trend = data_["heating_temp"] - predvalue["heating_temp"][0]
         heating_temp_trend = str(round(heating_temp_trend, 2)) + arrow_up if heating_temp_trend >= predvalue["heating_temp"][1] else str(
@@ -87,6 +95,12 @@ def survey_process(bot, id, q):
         t = time.localtime()
         _time = time.strftime("%H:%M:%S", t)
 
+        # Прочитаем оповещения
+        if data_["pending_alerts"] == 0:
+            text_alerts = ""
+        else:
+            text_alerts = "*Оповещение:* "+ AlertType(data_["pending_alerts"]) + str(data_["Alarm"])
+
         textdata = "*Опрос системы:*  " + _time + \
                    " (" + (datetime.datetime.strptime(_time, "%H:%M:%S") - datetime.datetime.strptime(predvalue["time"], "%H:%M:%S")).seconds.__str__() + "сек.)" + \
                    "\nРежим работы:  " + txtstate + \
@@ -98,8 +112,9 @@ def survey_process(bot, id, q):
                    "\nТемп.подачи топл.: " + str(round(data_["feeder_temp"], 2)) + \
                    "\nТемп.ГВС:                        " + str(round(data_["water_heater_temp"], 2)) + \
                    "\nНасос:                            " + ("Вкл" if data_['heating_pump'] else "Выкл") + \
-                   "\nМощность вентилятора:        " + str(round(data_["fan_power"], 2)) + \
-                   "\nТемп.с наружи:              " + str(round(data_["outside_temp"], 2))
+                   "\nМощ-ть вентил.:     " + str(round(data_["fan_power"], 2)) + " %" \
+                   "\nТемп.с наружи:              " + str(round(data_["outside_temp"], 2)) + \
+                    text_alerts
 
         predvalue = {"heating_temp": (round(data_["heating_temp"], 2), float(heating_temp_trend[:-1])),
                      "current_temp": (round(data_['mixers'][0].data['current_temp'], 2), float(current_temp_trend[:-1])),
@@ -187,20 +202,20 @@ def query_handler(call):
     #################################### contour
     elif select == 'Кривая нагрева контура':
         msg = bot.send_message(call.from_user.id, "Введите значение -: Кривая нагрева контура")
-        bot.register_next_step_handler(msg, writer, id=('heat_curve', 'QDoubleSpinBox', 'mixer'))
+        bot.register_next_step_handler(msg, writer, id=('heat_curve', 'QDoubleSpinBox', 'mixer', msg,))
 
     elif select == 'Параллельный сдвиг контура':
         msg = bot.send_message(call.from_user.id, "Введите значение -Параллельный сдвиг контура:")
-        bot.register_next_step_handler(msg, writer, id=('parallel_offset_heat_curve', 'QSpinBox', 'mixer'))
+        bot.register_next_step_handler(msg, writer, id=('parallel_offset_heat_curve', 'QSpinBox', 'mixer', msg,))
 
         ################################ boiler
-    elif select == '"Кривая нагрева"':
+    elif select == 'Кривая нагрева':
         msg = bot.send_message(call.from_user.id, "Введите значение: Кривая нагрева")
-        bot.register_next_step_handler(msg, writer, id=('heating_heat_curve', 'QDoubleSpinBox', ' '))
+        bot.register_next_step_handler(msg, writer, id=('heating_heat_curve', 'QDoubleSpinBox', ' ', msg,))
 
     elif select == "Параллельный сдвиг":
         msg = bot.send_message(call.from_user.id, "Введите значение: Параллельный сдвиг")
-        bot.register_next_step_handler(msg, writer, id=('heating_heat_curve_shift', 'QSpinBox', ''))
+        bot.register_next_step_handler(msg, writer, id=('heating_heat_curve_shift', 'QSpinBox', '', msg,))
 
     else:
         pass
@@ -212,8 +227,16 @@ def query_handler(call):
 
 
 def writer(message, id):
-    rez = asyncio.run(reader_plum.writer(message, id))
-    pass
+    if message.text.replace(',', '').isdigit() or message.text.replace('.', '').isdigit():
+        rez = asyncio.run(reader_plum.writer(message, id))
+    else:
+        bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+
+    bot.delete_message(chat_id=message.chat.id, message_id=id[3].id)
+
+    ip_mes = bot.send_message(chat_id=message.chat.id, text="Ошибка ввода числового значения. ").message_id
+    time.sleep(5)
+    bot.delete_message(message.chat.id, ip_mes)
 
 
 class User:
@@ -444,8 +467,8 @@ def boiler(message):
 
         bot.edit_message_text(chat_id=id, message_id=to_pin, text=text, reply_markup=markup, parse_mode="Markdown")
     except Exception as err:
-        logger.error("Ошибка получения данных котла. Повторите.")
-        ip_mes = bot.send_message(id, "Ошибка получения данных котла.").message_id
+        logger.error("Ошибка получения данных котла. {err}".format(err=err))
+        ip_mes = bot.send_message(id, "Ошибка получения данных котла. Повторите.").message_id
         time.sleep(5)
         bot.delete_message(id, ip_mes)
 
@@ -475,8 +498,8 @@ def contour(message):
                                                                   "\nТемп. возврата:      " + str(round(data_['return_temp'], 2))
                               , reply_markup=markup, parse_mode="Markdown")
     except Exception as err:
-        logger.error("Ошибка получения данных котла. Повторите.")
-        ip_mes = bot.send_message(id, "Ошибка получения данных контура.").message_id
+        logger.error("Ошибка получения данных котла. {err}".format(err=err))
+        ip_mes = bot.send_message(id, "Ошибка получения данных контура. Повторите.").message_id
         time.sleep(5)
         bot.delete_message(id, ip_mes)
 
@@ -547,10 +570,10 @@ def get_text_messages(message):
         delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
         id = message.chat.id
         t1 = threading.Thread(target=survey_process, args=[bot, id, q], daemon=True)
-        # t1 = multiprocessing.Process(target=survey_process, args=(bot, id, q,))
+        # que = multiprocessing.Queue
+        # t1 = Process(target=survey_process, args=(bot, id, que,))
         t1.start()
         logger.info("Запущен процесс {name}".format(name=t1.name))
-        # t1.join()
         globals()["stream"] = t1.ident
         # delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     elif message.text == 'Отключить опрос':
@@ -582,5 +605,11 @@ def get_text_messages(message):
         delete = bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
 
 
-bot.infinity_polling(timeout=10, long_polling_timeout=5)
+def startbot():
+    bot.infinity_polling(timeout=10, long_polling_timeout=5)
 
+if __name__ == '__main__':
+    startbot()
+    #
+    # t = Process(target=startbot)
+    # t.start()
